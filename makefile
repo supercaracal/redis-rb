@@ -1,29 +1,43 @@
-TEST_FILES         := $(shell find ./test -name *_test.rb -type f)
-REDIS_BRANCH       ?= unstable
-TMP                := tmp
-BUILD_DIR          := ${TMP}/cache/redis-${REDIS_BRANCH}
-TARBALL            := ${TMP}/redis-${REDIS_BRANCH}.tar.gz
-BINARY             := ${BUILD_DIR}/src/redis-server
-REDIS_CLIENT       := ${BUILD_DIR}/src/redis-cli
-REDIS_TRIB         := ${BUILD_DIR}/src/redis-trib.rb
-PID_PATH           := ${BUILD_DIR}/redis.pid
-SOCKET_PATH        := ${BUILD_DIR}/redis.sock
-PORT               := 6381
-CLUSTER_PORTS      := 7000 7001 7002 7003 7004 7005
-CLUSTER_PID_PATHS  := $(addprefix ${TMP}/redis,$(addsuffix .pid,${CLUSTER_PORTS}))
-CLUSTER_CONF_PATHS := $(addprefix ${TMP}/nodes,$(addsuffix .conf,${CLUSTER_PORTS}))
-CLUSTER_ADDRS      := $(addprefix 127.0.0.1:,${CLUSTER_PORTS})
+TEST_FILES          := $(shell find ./test -name *_test.rb -type f)
+REDIS_BRANCH        ?= unstable
+TMP                 := tmp
+BUILD_DIR           := ${TMP}/cache/redis-${REDIS_BRANCH}
+TARBALL             := ${TMP}/redis-${REDIS_BRANCH}.tar.gz
+BINARY              := ${BUILD_DIR}/src/redis-server
+REDIS_CLIENT        := ${BUILD_DIR}/src/redis-cli
+REDIS_TRIB          := ${BUILD_DIR}/src/redis-trib.rb
+PID_PATH            := ${BUILD_DIR}/redis.pid
+SOCKET_PATH         := ${BUILD_DIR}/redis.sock
+PORT                := 6381
+SLAVE_PORT          := 6382
+SLAVE_PID_PATH      := ${BUILD_DIR}/redis_slave.pid
+SENTINEL_PORTS      := 6400 6401 6402
+SENTINEL_PID_PATHS  := $(addprefix ${TMP}/redis,$(addsuffix .pid,${SENTINEL_PORTS}))
+CLUSTER_PORTS       := 7000 7001 7002 7003 7004 7005
+CLUSTER_PID_PATHS   := $(addprefix ${TMP}/redis,$(addsuffix .pid,${CLUSTER_PORTS}))
+CLUSTER_CONF_PATHS  := $(addprefix ${TMP}/nodes,$(addsuffix .conf,${CLUSTER_PORTS}))
+CLUSTER_ADDRS       := $(addprefix 127.0.0.1:,${CLUSTER_PORTS})
 
 define kill-redis
   (ls $1 2> /dev/null && kill $$(cat $1) && rm -f $1) || true
 endef
 
 all:
+	make start_all
+	make test
+	make stop_all
+
+start_all:
 	make start
+	make start_slave
+	make start_sentinel
 	make start_cluster
 	make create_cluster
-	make test
+
+stop_all:
+	make stop_sentinel
 	make stop
+	make stop_slave
 	make stop_cluster
 
 ${TMP}:
@@ -45,6 +59,36 @@ start: ${BINARY}
 		--pidfile    ${PID_PATH}    \
 		--port       ${PORT}        \
 		--unixsocket ${SOCKET_PATH}
+
+stop_slave:
+	$(call kill-redis,${SLAVE_PID_PATH})
+
+start_slave:
+	${BINARY}                                    \
+		--daemonize  yes                           \
+		--pidfile    ${SLAVE_PID_PATH}             \
+		--port       ${SLAVE_PORT}                 \
+		--unixsocket ${BUILD_DIR}/redis_slave.sock \
+		--slaveof    127.0.0.1 ${PORT}
+
+stop_sentinel:
+	$(call kill-redis,${SENTINEL_PID_PATHS})
+
+start_sentinel:
+	for port in ${SENTINEL_PORTS}; do\
+		conf=${TMP}/sentinel$$port.conf;\
+		touch $$conf;\
+		echo '' >  $$conf;\
+		echo 'sentinel monitor                 mymaster 127.0.0.1 ${PORT} 2' >> $$conf;\
+		echo 'sentinel down-after-milliseconds mymaster 5000'                >> $$conf;\
+		echo 'sentinel failover-timeout        mymaster 30000'               >> $$conf;\
+		echo 'sentinel parallel-syncs          mymaster 1'                   >> $$conf;\
+		${BINARY} $$conf\
+			--daemonize yes\
+			--pidfile   ${TMP}/redis$$port.pid\
+			--port      $$port\
+			--sentinel;\
+	done
 
 stop_cluster:
 	$(call kill-redis,${CLUSTER_PID_PATHS})
@@ -71,4 +115,4 @@ create_cluster:
 clean:
 	(test -d ${BUILD_DIR} && cd ${BUILD_DIR}/src && make clean distclean) || true
 
-.PHONY: all test stop start stop_cluster start_cluster create_cluster clean
+.PHONY: all test stop start stop_slave start_slave stop_sentinel start_sentinel stop_cluster start_cluster create_cluster stop_all start_all clean
