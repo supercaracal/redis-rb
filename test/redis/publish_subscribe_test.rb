@@ -301,6 +301,7 @@ class TestPublishSubscribe < Minitest::Test
   end
 
   def test_subscribe_from_another_thread
+    raise 'a'
     @events = Queue.new
     @subscribed_redis = nil
     thread = new_thread do |r|
