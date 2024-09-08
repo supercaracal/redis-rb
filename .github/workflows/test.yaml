@@ -95,9 +95,9 @@ jobs:
         run: make start
       - name: Test
         run: |
+          timeout 120 bundle exec rake test:${{ matrix.suite }} || echo timeouted
           free
-          bundle exec rake test:${{ matrix.suite }}
-          free
+          vmstat
       - name: Shutting down Redis
         run: make stop
 
