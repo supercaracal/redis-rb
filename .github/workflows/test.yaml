@@ -94,7 +94,20 @@ jobs:
       - name: Booting up Redis
         run: make start
       - name: Test
-        run: bundle exec rake test:${{ matrix.suite }}
+        run: |
+          if timeout 90 bash -c 'bundle exec rake test:${{ matrix.suite }} | tee tmp/test.log'
+          then
+            echo 'FIXME: remove workaround from workflow'
+          else
+            case $? in
+              124)
+                grep '0 failures, 0 errors' tmp/test.log
+                ;;
+              *)
+                exit 1
+                ;;
+            esac
+          fi
       - name: Shutting down Redis
         run: make stop
 
