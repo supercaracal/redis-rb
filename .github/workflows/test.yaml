@@ -71,7 +71,7 @@ jobs:
     env:
       LOW_TIMEOUT: "0.01"
       REDIS_BRANCH: "7.2"
-      TRUFFLERUBYOPT: "--engine.Mode=latency --vm.Xmx2g"
+      TRUFFLERUBYOPT: "--engine.Mode=latency"
     steps:
       - name: Check out code
         uses: actions/checkout@v4
