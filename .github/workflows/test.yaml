@@ -10,7 +10,7 @@ on:
 jobs:
   lint:
     name: Rubocop
-    timeout-minutes: 15
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -25,7 +25,7 @@ jobs:
 
   rubies:
     name: Ruby
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +62,7 @@ jobs:
 
   truffle:
     name: TruffleRuby
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -103,7 +103,7 @@ jobs:
 
   drivers:
     name: Driver
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -141,7 +141,7 @@ jobs:
 
   redises:
     name: Redis
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -178,7 +178,7 @@ jobs:
 
   sentinel:
     name: Sentinel
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
     runs-on: ubuntu-latest
@@ -213,7 +213,7 @@ jobs:
 
   cluster:
     name: Cluster
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
     runs-on: ubuntu-latest
